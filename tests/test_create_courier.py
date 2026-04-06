@@ -2,7 +2,8 @@ import allure
 import pytest
 import requests
 from config import Config
-from helpers.courier_helper import generate_random_string,  register_new_courier_and_return_login_password, delete_courier
+from helpers.courier_helper import register_new_courier_and_return_login_password, delete_courier
+from helpers.courier_helper import generate_random_string
 
 
 @allure.feature('Создание курьера')
@@ -52,12 +53,8 @@ class TestCreateCourier:
         # Для теста на отсутствие полей нужно использовать уникальные данные
         assert response.status_code in [400, 409]
 
-    @allure.title('Успешный запрос возвращает {"ok": true}')
+    @allure.title('Успешный запрос возвращает ok true')
     def test_create_courier_returns_ok(self):
-        courier = register_new_courier_and_return_login_password()
-        assert courier is not None
-        # Здесь нужно проверить, что в ответе есть ok: true
-        # Для этого нужно получить ответ от API
         login = generate_random_string(10)
         password = generate_random_string(10)
         first_name = generate_random_string(10)
@@ -69,11 +66,11 @@ class TestCreateCourier:
         response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
         assert response.status_code == 201
         assert response.json() == {"ok": True}
-        
+
         # Очистка
         if response.status_code == 201:
             # Получаем ID через логин
-            login_response = requests.post(f"{Config.BASE_URL}{Config.LOGIN_COURIER}", 
+            login_response = requests.post(f"{Config.BASE_URL}{Config.LOGIN_COURIER}",
                                            json={"login": login, "password": password})
             if login_response.status_code == 200:
                 delete_courier(login_response.json()["id"])
