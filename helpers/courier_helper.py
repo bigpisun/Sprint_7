@@ -1,50 +1,80 @@
+import allure
 import requests
-import random
-import string
 from config import Config
+from data.courier_data import generate_unique_courier_data
 
 
-def generate_random_string(length=10):
-    """Генерация случайной строки"""
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(length))
-
-
-def register_new_courier_and_return_login_password():
-    """Регистрация нового курьера и возврат логина и пароля"""
-    login = generate_random_string(10)
-    password = generate_random_string(10)
-    first_name = generate_random_string(10)
-
-    payload = {
-        "login": login,
-        "password": password,
-        "firstName": first_name
-    }
-
-    response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
-
-    if response.status_code == 201:
-        return {"login": login, "password": password, "firstName": first_name, "id": response.json().get("id")}
-    return None
-
-
-def create_test_courier():
-    """Создание тестового курьера для удаления после теста"""
-    courier = register_new_courier_and_return_login_password()
-    
-    # Получаем ID курьера после логина
-    if courier:
-        login_payload = {"login": courier["login"], "password": courier["password"]}
-        login_response = requests.post(f"{Config.BASE_URL}{Config.LOGIN_COURIER}", json=login_payload)
-        if login_response.status_code == 200:
-            courier["id"] = login_response.json().get("id")
-    return courier
+def create_courier(payload):
+    """Создание курьера с проверкой ответа"""
+    with allure.step(f"Отправка запроса на создание курьера с данными: {payload}"):
+        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
+        
+        with allure.step("Проверка ответа API"):
+            assert response.status_code in [200, 201], \
+                f"Ожидался статус 200/201, получен {response.status_code}"
+            
+            assert "ok" in response.json(), \
+                "В ответе отсутствует поле 'ok'"
+            
+            assert response.json()["ok"] is True, \
+                "Значение поля 'ok' должно быть True"
+        
+        return response
 
 
 def delete_courier(courier_id):
     """Удаление курьера по ID"""
-    if courier_id:
+    with allure.step(f"Отправка запроса на удаление курьера с id={courier_id}"):
         response = requests.delete(f"{Config.BASE_URL}{Config.DELETE_COURIER}/{courier_id}")
-        return response.status_code == 200
-    return False
+        
+        with allure.step("Проверка ответа API"):
+            assert response.status_code == 200, \
+                f"Ожидался статус 200, получен {response.status_code}"
+            
+            assert "ok" in response.json(), \
+                "В ответе отсутствует поле 'ok'"
+            
+            assert response.json()["ok"] is True, \
+                "Значение поля 'ok' должно быть True"
+        
+        return response
+
+
+def login_courier(login, password):
+    """Логин курьера"""
+    with allure.step(f"Отправка запроса на логин курьера с логином: {login}"):
+        payload = {"login": login, "password": password}
+        response = requests.post(f"{Config.BASE_URL}{Config.LOGIN_COURIER}", json=payload)
+        
+        with allure.step("Проверка ответа API"):
+            assert response.status_code == 200, \
+                f"Ожидался статус 200, получен {response.status_code}"
+            
+            assert "id" in response.json(), \
+                "В ответе отсутствует поле 'id'"
+            
+            assert isinstance(response.json()["id"], int), \
+                "Поле 'id' должно быть числом"
+        
+        return response
+
+
+def create_courier_with_validation(payload):
+    """Создание курьера с ожидаемой ошибкой (негативные тесты)"""
+    with allure.step(f"Отправка запроса на создание курьера с невалидными данными: {payload}"):
+        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
+        return response
+
+
+def register_new_courier_and_return_login_password():
+    """Регистрация нового курьера и возврат данных для логина"""
+    with allure.step("Генерация уникальных данных для нового курьера"):
+        courier_data = generate_unique_courier_data()
+    
+    with allure.step("Отправка запроса на создание курьера"):
+        create_response = create_courier(courier_data)
+    
+    with allure.step("Проверка успешного создания"):
+        assert create_response.status_code == 201
+    
+    return courier_data

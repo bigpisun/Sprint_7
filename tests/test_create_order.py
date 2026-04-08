@@ -1,55 +1,54 @@
 import allure
-import pytest
-from helpers.order_helper import create_order, cancel_order
-from data.order_data import OrderData
+import requests
+from config import Config
+from data.order_data import DEFAULT_ORDER_DATA, ORDER_WITHOUT_COLOR, ORDER_WITH_BLACK_COLOR, ORDER_WITH_GREY_COLOR, ORDER_WITH_BOTH_COLORS
+from helpers.order_helper import create_order
 
 
-@allure.feature('Создание заказа')
+@allure.feature('Заказы')
+@allure.story('Создание заказа')
 class TestCreateOrder:
     
-    @allure.title('Можно указать один цвет - BLACK')
-    def test_create_order_with_black_color(self):
-        response = create_order(OrderData.ORDER_WITH_BLACK_COLOR)
-        assert response.status_code == 201
-        assert "track" in response.json()
-        # Очистка
-        cancel_order(response.json()["track"])
-    
-    @allure.title('Можно указать один цвет - GREY')
-    def test_create_order_with_grey_color(self):
-        response = create_order(OrderData.ORDER_WITH_GREY_COLOR)
-        assert response.status_code == 201
-        assert "track" in response.json()
-        # Очистка
-        cancel_order(response.json()["track"])
-    
-    @allure.title('Можно указать оба цвета')
-    def test_create_order_with_both_colors(self):
-        response = create_order(OrderData.ORDER_WITH_BOTH_COLORS)
-        assert response.status_code == 201
-        assert "track" in response.json()
-        # Очистка
-        cancel_order(response.json()["track"])
-    
-    @allure.title('Можно не указывать цвет')
-    def test_create_order_without_color(self):
-        response = create_order(OrderData.ORDER_WITHOUT_COLOR)
-        assert response.status_code == 201
-        assert "track" in response.json()
-        # Очистка
-        cancel_order(response.json()["track"])
-    
-    @allure.title('Тело ответа содержит track')
-    @pytest.mark.parametrize("order_data", [
-        OrderData.ORDER_WITH_BLACK_COLOR,
-        OrderData.ORDER_WITH_GREY_COLOR,
-        OrderData.ORDER_WITH_BOTH_COLORS,
-        OrderData.ORDER_WITHOUT_COLOR
+    @allure.title('Можно создать заказ с разными вариантами цвета')
+    @allure.parametrize("order_data", [
+        DEFAULT_ORDER_DATA,
+        ORDER_WITHOUT_COLOR,
+        ORDER_WITH_BLACK_COLOR,
+        ORDER_WITH_GREY_COLOR,
+        ORDER_WITH_BOTH_COLORS
     ])
-    def test_order_response_contains_track(self, order_data):
-        response = create_order(order_data)
-        assert response.status_code == 201
-        assert "track" in response.json()
-        assert isinstance(response.json()["track"], int)
-        # Очистка
-        cancel_order(response.json()["track"])
+    def test_create_order_with_different_colors(self, order_data):
+        with allure.step("Создание заказа"):
+            response = create_order(order_data)
+            
+            with allure.step("Проверка ответа API"):
+                assert response.status_code == 201
+                assert "track" in response.json()
+                assert isinstance(response.json()["track"], int)
+        
+        with allure.step("Очистка: отмена заказа"):
+            from helpers.order_helper import cancel_order
+            cancel_order(response.json()["track"])
+    
+    @allure.title('Создание заказа без дополнительных полей работает корректно')
+    def test_create_order_minimal_fields(self):
+        with allure.step("Создание заказа с минимальными данными"):
+            minimal_order = {
+                "firstName": "Иван",
+                "lastName": "Иванов",
+                "address": "Москва, ул. Тестовая, 1",
+                "metroStation": 4,
+                "phone": "+79991234567",
+                "rentTime": 5,
+                "deliveryDate": "2025-12-31",
+                "comment": ""
+            }
+            response = create_order(minimal_order)
+            
+            with allure.step("Проверка ответа API"):
+                assert response.status_code == 201
+                assert "track" in response.json()
+        
+        with allure.step("Очистка: отмена заказа"):
+            from helpers.order_helper import cancel_order
+            cancel_order(response.json()["track"])

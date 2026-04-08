@@ -1,49 +1,32 @@
-class OrderData:
-    # Тестовые данные для создания заказа
-    ORDER_WITH_BLACK_COLOR = {
+class OrderColors:
+    BLACK = ["BLACK"]
+    GREY = ["GREY"]
+    BOTH = ["BLACK", "GREY"]
+    NONE = []
+
+
+def generate_order_data(color=None):
+    """Генерирует данные для заказа с указанным цветом"""
+    base_order = {
         "firstName": "Иван",
-        "lastName": "Петров",
-        "address": "ул. Ленина, 10",
-        "metroStation": 1,
+        "lastName": "Иванов",
+        "address": "Москва, ул. Тестовая, 1",
+        "metroStation": 4,
         "phone": "+79991234567",
         "rentTime": 5,
-        "deliveryDate": "2026-04-10",
-        "comment": "Позвонить за час",
-        "color": ["BLACK"]
+        "deliveryDate": "2025-12-31",
+        "comment": "Тестовый заказ"
     }
     
-    ORDER_WITH_GREY_COLOR = {
-        "firstName": "Мария",
-        "lastName": "Иванова",
-        "address": "пр. Мира, 25",
-        "metroStation": 2,
-        "phone": "+79876543210",
-        "rentTime": 3,
-        "deliveryDate": "2026-04-15",
-        "comment": "Домофон 123",
-        "color": ["GREY"]
-    }
+    if color is not None:
+        base_order["color"] = color
     
-    ORDER_WITH_BOTH_COLORS = {
-        "firstName": "Алексей",
-        "lastName": "Сидоров",
-        "address": "ул. Пушкина, 5",
-        "metroStation": 3,
-        "phone": "+79111234567",
-        "rentTime": 4,
-        "deliveryDate": "2026-04-20",
-        "comment": "Оставить у двери",
-        "color": ["BLACK", "GREY"]
-    }
-    
-    ORDER_WITHOUT_COLOR = {
-        "firstName": "Елена",
-        "lastName": "Смирнова",
-        "address": "б-р. Строителей, 15",
-        "metroStation": 4,
-        "phone": "+79221234567",
-        "rentTime": 2,
-        "deliveryDate": "2026-04-25",
-        "comment": "Без самоката не уезжать",
-        "color": []
-    }
+    return base_order
+
+
+# Стандартные данные для тестов
+DEFAULT_ORDER_DATA = generate_order_data(OrderColors.BLACK)
+ORDER_WITHOUT_COLOR = generate_order_data(None)
+ORDER_WITH_BLACK_COLOR = generate_order_data(OrderColors.BLACK)
+ORDER_WITH_GREY_COLOR = generate_order_data(OrderColors.GREY)
+ORDER_WITH_BOTH_COLORS = generate_order_data(OrderColors.BOTH)
