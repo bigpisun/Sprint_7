@@ -1,8 +1,9 @@
 import allure
+import pytest
 import requests
 from config import Config
 from data.order_data import DEFAULT_ORDER_DATA, ORDER_WITHOUT_COLOR, ORDER_WITH_BLACK_COLOR, ORDER_WITH_GREY_COLOR, ORDER_WITH_BOTH_COLORS
-from helpers.order_helper import create_order
+from helpers.order_helper import create_order, cancel_order
 
 
 @allure.feature('Заказы')
@@ -10,7 +11,7 @@ from helpers.order_helper import create_order
 class TestCreateOrder:
     
     @allure.title('Можно создать заказ с разными вариантами цвета')
-    @allure.parametrize("order_data", [
+    @pytest.mark.parametrize("order_data", [
         DEFAULT_ORDER_DATA,
         ORDER_WITHOUT_COLOR,
         ORDER_WITH_BLACK_COLOR,
@@ -26,9 +27,12 @@ class TestCreateOrder:
                 assert "track" in response.json()
                 assert isinstance(response.json()["track"], int)
         
-        with allure.step("Очистка: отмена заказа"):
-            from helpers.order_helper import cancel_order
-            cancel_order(response.json()["track"])
+        # Пытаемся отменить заказ, но не проверяем результат (просто для очистки)
+        with allure.step("Очистка: попытка отмены заказа"):
+            try:
+                cancel_order(response.json()["track"])
+            except:
+                pass  # Игнорируем ошибки отмены
     
     @allure.title('Создание заказа без дополнительных полей работает корректно')
     def test_create_order_minimal_fields(self):
@@ -49,6 +53,8 @@ class TestCreateOrder:
                 assert response.status_code == 201
                 assert "track" in response.json()
         
-        with allure.step("Очистка: отмена заказа"):
-            from helpers.order_helper import cancel_order
-            cancel_order(response.json()["track"])
+        with allure.step("Очистка: попытка отмены заказа"):
+            try:
+                cancel_order(response.json()["track"])
+            except:
+                pass
