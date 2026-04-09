@@ -2,8 +2,9 @@ import pytest
 import requests
 import allure
 from config import Config
-from helpers.courier_helper import create_courier, delete_courier
+from helpers.courier_helper import delete_courier
 from helpers.order_helper import cancel_order
+from data.courier_data import generate_unique_courier_data
 
 
 @pytest.fixture
@@ -13,37 +14,20 @@ def create_and_delete_courier():
     created_courier_id = None
     
     with allure.step("Создание курьера для теста"):
-        # Генерируем уникальные данные
-        import random
-        import string
-        login = f"test_courier_{random.randint(1000, 9999)}"
-        password = "password123"
-        first_name = "Test"
+        courier_data = generate_unique_courier_data()
         
-        payload = {
-            "login": login,
-            "password": password,
-            "firstName": first_name
-        }
-        
-        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
+        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=courier_data)
         
         if response.status_code == 201:
             # Получаем ID курьера через логин
             login_response = requests.post(
                 f"{Config.BASE_URL}{Config.LOGIN_COURIER}", 
-                json={"login": login, "password": password}
+                json={"login": courier_data["login"], "password": courier_data["password"]}
             )
             if login_response.status_code == 200:
                 created_courier_id = login_response.json().get("id")
-                courier_data = {
-                    "id": created_courier_id,
-                    "login": login,
-                    "password": password,
-                    "first_name": first_name
-                }
     
-    yield courier_data
+    yield courier_data, created_courier_id
     
     with allure.step("Удаление курьера после теста (пост-условие)"):
         if created_courier_id:
@@ -83,37 +67,46 @@ def create_and_cancel_order():
 @pytest.fixture
 def existing_courier():
     """Фикстура: создаёт и возвращает существующего курьера для тестов"""
+    courier_data = generate_unique_courier_data()
+    created_courier_id = None
+    
     with allure.step("Создание существующего курьера как предусловие"):
-        import random
-        import string
-        login = f"existing_courier_{random.randint(1000, 9999)}"
-        password = "password123"
-        first_name = "Existing"
+        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=courier_data)
         
-        payload = {
-            "login": login,
-            "password": password,
-            "firstName": first_name
-        }
-        
-        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
-        
-        courier_id = None
         if response.status_code == 201:
             login_response = requests.post(
                 f"{Config.BASE_URL}{Config.LOGIN_COURIER}", 
-                json={"login": login, "password": password}
+                json={"login": courier_data["login"], "password": courier_data["password"]}
             )
             if login_response.status_code == 200:
-                courier_id = login_response.json().get("id")
+                created_courier_id = login_response.json().get("id")
+    
+    yield {
+        "login": courier_data["login"],
+        "password": courier_data["password"],
+        "first_name": courier_data.get("firstName", ""),
+        "id": created_courier_id
+    }
+    
+    with allure.step("Очистка: удаление курьера"):
+        if created_courier_id:
+            delete_courier(created_courier_id)
+
+
+@pytest.fixture
+def create_courier_for_test():
+    """Фикстура: создаёт курьера и возвращает его данные без автоудаления"""
+    courier_data = generate_unique_courier_data()
+    
+    with allure.step("Создание курьера для теста"):
+        response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=courier_data)
         
-        yield {
-            "login": login,
-            "password": password,
-            "first_name": first_name,
-            "id": courier_id
-        }
-        
-        with allure.step("Очистка: удаление курьера"):
-            if courier_id:
-                delete_courier(courier_id)
+        if response.status_code == 201:
+            login_response = requests.post(
+                f"{Config.BASE_URL}{Config.LOGIN_COURIER}", 
+                json={"login": courier_data["login"], "password": courier_data["password"]}
+            )
+            if login_response.status_code == 200:
+                courier_data["id"] = login_response.json().get("id")
+    
+    return courier_data

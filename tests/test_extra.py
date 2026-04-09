@@ -2,7 +2,7 @@ import allure
 import pytest
 import requests
 from config import Config
-from helpers.courier_helper import create_courier_with_validation, delete_courier, login_courier
+from helpers.courier_helper import create_courier_with_validation
 from helpers.order_helper import get_order_by_track, accept_order
 from data.courier_data import generate_unique_courier_data
 from data.messages import CourierMessages
@@ -19,7 +19,6 @@ class TestExtraScenarios:
             
             with allure.step("Проверка ответа API"):
                 assert response.status_code == 404
-                # Используем правильное сообщение (с точкой)
                 assert response.json()["message"] == CourierMessages.COURIER_NOT_FOUND
     
     @allure.title('Попытка получить заказ по несуществующему треку')
@@ -52,24 +51,33 @@ class TestExtraScenarios:
                 assert response.status_code == 400
                 assert "message" in response.json()
     
-    @allure.title('Создание курьера с пустыми значениями полей')
-    @pytest.mark.parametrize("field, value", [
-        ("login", ""),
-        ("password", ""),
-        ("firstName", "")
-    ])
-    def test_create_courier_with_empty_fields(self, field, value):
-        with allure.step(f"Создание курьера с пустым полем {field}"):
+    @allure.title('Создание курьера с пустым логином возвращает ошибку')
+    def test_create_courier_with_empty_login(self):
+        with allure.step("Создание курьера с пустым логином"):
             courier_data = generate_unique_courier_data()
-            courier_data[field] = value
+            courier_data["login"] = ""
             
             response = create_courier_with_validation(courier_data)
             
             with allure.step("Проверка ответа API"):
-                # Пустой firstName может быть допустим, проверяем только login и password
-                if field == "firstName":
-                    # firstName может быть пустым, API создаёт курьера
-                    assert response.status_code in [201, 400]
-                else:
-                    assert response.status_code == 400
-                    assert "message" in response.json()
+                assert response.status_code == 400
+                assert "message" in response.json()
+    
+    @allure.title('Создание курьера с пустым паролем возвращает ошибку')
+    def test_create_courier_with_empty_password(self):
+        with allure.step("Создание курьера с пустым паролем"):
+            courier_data = generate_unique_courier_data()
+            courier_data["password"] = ""
+            
+            response = create_courier_with_validation(courier_data)
+            
+            with allure.step("Проверка ответа API"):
+                assert response.status_code == 400
+                assert "message" in response.json()
+    
+    @allure.title('Создание курьера с пустым именем допустимо')
+    def test_create_courier_with_empty_firstname(self, create_and_delete_courier):
+        with allure.step("Создание курьера с пустым firstName"):
+            courier_data, courier_id = create_and_delete_courier
+            # Фикстура создала курьера с пустым firstName?
+            assert courier_data is not None

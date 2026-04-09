@@ -2,8 +2,8 @@ class CourierMessages:
     """Класс с ожидаемыми сообщениями для курьеров"""
     LOGIN_ALREADY_USED = "Этот логин уже используется. Попробуйте другой."
     MISSING_REQUIRED_FIELD = "Недостаточно данных для создания учетной записи"
-    MISSING_REQUIRED_FIELD_FOR_LOGIN = "Недостаточно данных для входа"  # для логина
-    COURIER_NOT_FOUND = "Курьера с таким id нет."  # обрати внимание на точку в конце
+    MISSING_REQUIRED_FIELD_FOR_LOGIN = "Недостаточно данных для входа"
+    COURIER_NOT_FOUND = "Курьера с таким id нет."
     LOGIN_NOT_FOUND = "Учетная запись не найдена"
     INCORRECT_PASSWORD = "Неверный пароль"
 
