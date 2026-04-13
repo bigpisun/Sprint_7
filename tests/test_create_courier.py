@@ -1,5 +1,4 @@
 import allure
-import pytest
 import requests
 from config import Config
 from data.courier_data import (
@@ -8,7 +7,7 @@ from data.courier_data import (
     generate_courier_without_password,
 )
 from data.messages import CourierMessages
-from helpers.courier_helper import create_courier, login_courier, create_courier_with_validation
+from helpers.courier_helper import create_courier, login_courier, delete_courier
 
 
 @allure.feature('Курьеры')
@@ -16,57 +15,73 @@ from helpers.courier_helper import create_courier, login_courier, create_courier
 class TestCreateCourier:
     
     @allure.title('Курьера можно создать с валидными данными')
-    def test_create_courier_success(self, create_and_delete_courier):
-        with allure.step("Проверка, что курьер был создан"):
-            courier_data, courier_id = create_and_delete_courier
-            assert courier_data is not None
-            assert courier_id is not None
+    def test_create_courier_success(self, delete_courier_after_test):
+        with allure.step("Создание курьера с валидными данными"):
+            courier_data = generate_unique_courier_data()
+            response = create_courier(courier_data)
+            
+            assert response.status_code == 201
+        
+        with allure.step("Получение ID курьера для очистки"):
+            login_response = login_courier(courier_data["login"], courier_data["password"])
+            courier_id = login_response.json()["id"]
+            delete_courier_after_test.append(courier_id)
         
         with allure.step("Проверка, что курьер может войти в систему"):
-            login_response = login_courier(
-                courier_data["login"], 
-                courier_data["password"]
-            )
+            login_response = login_courier(courier_data["login"], courier_data["password"])
             assert login_response.status_code == 200
+            assert "id" in login_response.json()
     
     @allure.title('Нельзя создать двух одинаковых курьеров')
-    def test_create_duplicate_courier_fails(self, existing_courier):
-        with allure.step("Попытка создать курьера с уже существующим логином"):
-            response = create_courier_with_validation({
-                "login": existing_courier["login"],
-                "password": "different_password",
-                "firstName": "Different Name"
-            })
+    def test_create_duplicate_courier_fails(self, delete_courier_after_test):
+        with allure.step("Создание первого курьера"):
+            courier_data = generate_unique_courier_data()
+            response = create_courier(courier_data)
+            assert response.status_code == 201
             
-            with allure.step("Проверка ответа API"):
-                assert response.status_code == 409
-                assert response.json()["message"] == CourierMessages.LOGIN_ALREADY_USED
+            login_response = login_courier(courier_data["login"], courier_data["password"])
+            courier_id = login_response.json()["id"]
+            delete_courier_after_test.append(courier_id)
+        
+        with allure.step("Попытка создать курьера с таким же логином"):
+            response = requests.post(
+                f"{Config.BASE_URL}{Config.CREATE_COURIER}", 
+                json=courier_data
+            )
+            
+            assert response.status_code == 409
+            assert response.json()["message"] == CourierMessages.LOGIN_ALREADY_USED
     
     @allure.title('Можно создать курьера с минимальным набором полей')
-    def test_create_courier_minimal_fields(self, create_and_delete_courier):
+    def test_create_courier_minimal_fields(self, delete_courier_after_test):
         with allure.step("Создание курьера только с логином и паролем"):
-            courier_data, courier_id = create_and_delete_courier
-            # Данные уже созданы в фикстуре
-            assert courier_data is not None
-            assert "login" in courier_data
-            assert "password" in courier_data
+            courier_data = generate_unique_courier_data()
+            minimal_payload = {
+                "login": courier_data["login"],
+                "password": courier_data["password"]
+            }
+            
+            response = create_courier(minimal_payload)
+            assert response.status_code == 201
+            
+            login_response = login_courier(courier_data["login"], courier_data["password"])
+            courier_id = login_response.json()["id"]
+            delete_courier_after_test.append(courier_id)
     
     @allure.title('Создание курьера без логина возвращает ошибку')
     def test_create_courier_without_login(self):
         with allure.step("Создание курьера без поля login"):
             payload = generate_courier_without_login()
-            response = create_courier_with_validation(payload)
+            response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
             
-            with allure.step("Проверка ответа API"):
-                assert response.status_code == 400
-                assert response.json()["message"] == CourierMessages.MISSING_REQUIRED_FIELD
+            assert response.status_code == 400
+            assert response.json()["message"] == CourierMessages.MISSING_REQUIRED_FIELD
     
     @allure.title('Создание курьера без пароля возвращает ошибку')
     def test_create_courier_without_password(self):
         with allure.step("Создание курьера без поля password"):
             payload = generate_courier_without_password()
-            response = create_courier_with_validation(payload)
+            response = requests.post(f"{Config.BASE_URL}{Config.CREATE_COURIER}", json=payload)
             
-            with allure.step("Проверка ответа API"):
-                assert response.status_code == 400
-                assert response.json()["message"] == CourierMessages.MISSING_REQUIRED_FIELD
+            assert response.status_code == 400
+            assert response.json()["message"] == CourierMessages.MISSING_REQUIRED_FIELD
